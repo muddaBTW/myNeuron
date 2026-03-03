@@ -1,0 +1,900 @@
+============================================================
+         myNeuron - POORA PROJECT EXPLAIN (HINGLISH)
+============================================================
+
+
+Ye ek visual neural network designer hai. User browser
+mein aake layers add karta hai (Dense, Conv2D, LSTM, etc),
+network ka diagram dekhta hai, aur TensorFlow ka ready-to-run
+Python code download karta hai. Koi training nahi hoti yahan
+- sirf design aur export.
+
+Project do parts mein hai:
+  FRONTEND = jo user ko browser mein dikhta hai (Streamlit)
+  BACKEND  = jo peeche se data process karta hai (FastAPI)
+
+
+
+============================================================
+        FRONTEND - JO USER KO DIKHTA HAI
+============================================================
+
+Frontend Streamlit se bana hai. Streamlit ek Python library
+hai jisme sirf Python likh ke web app ban jaata hai - HTML
+ya JavaScript likhne ki zarurat nahi. Python script likho,
+Streamlit automatically usme se web page bana deta hai.
+
+Frontend mein 3 files hain:
+
+
+------------------------------------------------------------
+FILE: frontend/app.py (Main Application - 573 lines)
+------------------------------------------------------------
+
+Ye sabse badi aur important file hai. Poori app isi mein hai.
+Isko parts mein samjho:
+
+
+PART 1: PAGE CONFIG
+  - Page ka title set hota hai "myNeuron - Neural Network Designer"
+  - Icon brain emoji lagta hai (taaki tab mein dikhta hai)
+  - Layout "wide" hai taaki poora screen use ho
+  - Sidebar default mein open rehta hai
+
+
+PART 2: CUSTOM CSS
+  Streamlit ka default look boring hota hai - white background,
+  plain buttons. Toh humne apni CSS inject ki hai st.markdown()
+  ke through. Ye kya kiya:
+  
+  - Background dark kar di (#0E1117, lagbhag black)
+  - Layer cards ko gradient diya - dark blue se purple jaata hai
+  - Stats boxes ko glow effect diya with purple border
+  - Title "myNeuron" ko gradient text effect diya
+  - Tables ko dark theme diya matching background ke saath
+  - Hover effects lagaye - mouse le jaao toh card glow karta hai
+  - Code block ka background dark kiya
+  
+  Ye CSS unsafe_allow_html=True se inject hoti hai. Matlab
+  Streamlit ko bol rahe hain "haan bhai, HTML allow karo."
+
+
+PART 3: API URL
+  Ek variable hai API_URL jo decide karta hai backend kahan hai.
+  
+  os.environ.get("MYNEURON_API_URL", "http://localhost:8000")
+  
+  Ye kya karta hai:
+  - Pehle check karta hai env variable MYNEURON_API_URL set hai kya
+  - Agar hai (jaise production mein Vercel URL), toh wo use karo
+  - Agar nahi hai (local development mein), toh localhost:8000 use karo
+  
+  Isse ek hi code local machine pe bhi chalta hai aur deployed
+  version mein bhi. Kuch change karne ki zarurat nahi.
+
+
+PART 4: SESSION STATE
+  Streamlit mein ek problem hai - har baar jab user koi bhi
+  button click karta hai ya kuch change karta hai, POORI Python
+  script topse bottom dubara run hoti hai. Matlab agar tum
+  normally variable banao (x = 5), toh har click pe reset ho
+  jaayega back to 5.
+  
+  Iska solution hai st.session_state. Ye ek dictionary hai jo
+  data store karti hai clicks ke beech. Hum 4 cheezein store
+  karte hain:
+  
+  - layers = user ne jo layers add kiye hain unki list
+  - generated_code = generate hua TensorFlow code
+  - model_summary = model summary ka result
+  - validation_result = validation ka result
+
+
+PART 5: SIDEBAR (Left Panel)
+  
+  Ye control panel hai - user yahan se sab configure karta hai:
+  
+  MODEL NAME (text input)
+    User apne model ka naam type karta hai. Default "MyModel".
+    Ye naam generated code mein class/variable name ban jaata hai.
+  
+  CATEGORY DROPDOWN
+    Layers ko categories mein organize kiya hai:
+    - Core: Input, Dense, Activation, Dropout, Flatten, Reshape
+    - Convolutional: Conv1D, Conv2D, Conv3D, SeparableConv2D, etc.
+    - Pooling: MaxPooling2D, AveragePooling2D, GlobalAvgPool, etc.
+    - Recurrent: SimpleRNN, LSTM, GRU, Bidirectional
+    - Normalization: BatchNormalization, LayerNormalization
+    - Embedding: Embedding
+    
+    Pehle category select karo, phir usme se specific layer.
+  
+  LAYER TYPE DROPDOWN
+    Category select karne ke baad yahan specific layer dikhte hain.
+    Jaise "Core" select kiya toh Dense, Dropout, Flatten dikhega.
+  
+  ADD LAYER BUTTON
+    Click karo toh selected layer session_state.layers list mein
+    add ho jaata hai. Page rerun hota hai aur naya layer Architecture
+    tab mein dikh jaata hai.
+  
+  TEMPLATES DROPDOWN
+    4 pre-built architectures hain instant load ke liye:
+    
+    Simple MLP (MNIST) - 7 layers: Input(784) > Dense(256,relu)
+      > BatchNorm > Dropout(0.3) > Dense(128,relu) > Dropout(0.2)
+      > Dense(10,softmax). Ye basic digit classifier hai.
+    
+    CNN (Image Classification) - 11 layers: Input(28,28,1) > Conv2D(32)
+      > BatchNorm > MaxPool > Conv2D(64) > BatchNorm > MaxPool
+      > Flatten > Dense(128) > Dropout(0.5) > Dense(10,softmax).
+      Ye image classify karta hai.
+    
+    LSTM (Sequence) - 6 layers: Input(100,50) > LSTM(128,return_seq=True)
+      > Dropout(0.2) > LSTM(64) > Dense(32,relu) > Dense(10,softmax).
+      Ye text/sequence data ke liye hai.
+    
+    Autoencoder - 7 layers: Input(784) > Dense(256) > Dense(64) > Dense(32)
+      > Dense(64) > Dense(256) > Dense(784,sigmoid).
+      Ye data compress karke decompress karta hai. Symmetric hai.
+  
+  COMPILE SETTINGS
+    Optimizer: adam, sgd, rmsprop, adagrad, adamax, nadam, adamw
+      Ye decide karta hai model ke weights kaise update hoon training mein.
+      Adam sabse popular hai - most cases mein out of the box kaam karta hai.
+    
+    Learning Rate: 0.00001 se 1.0 (default 0.001)
+      Kitna bada step le training mein. Bahut bada = overshooting,
+      bahut chhota = bahut slow training.
+    
+    Loss Function: categorical_crossentropy, binary_crossentropy, mse, etc.
+      Model ki galti kaise measure karein. Classification ke liye crossentropy,
+      regression ke liye mse/mae.
+    
+    Metrics: accuracy, Precision, Recall, AUC, F1Score, mae, mse, RMSE
+      Training ke time kya track karein. Multiple select kar sakte ho.
+  
+  TRAINING SETTINGS
+    Epochs: Kitni baar poore dataset pe iterate kare (default 10)
+    Batch Size: Ek time mein kitne samples process kare (default 32)
+    Validation Split: Data ka kitna % validation ke liye rakhe (default 20%)
+  
+  CLEAR ALL BUTTON
+    Sab layers delete, generated code delete, summary delete. Clean slate.
+
+
+PART 6: MAIN AREA - 4 TABS
+
+  TAB 1: ARCHITECTURE
+    Har added layer ek expandable card mein dikhta hai. Jaise:
+    "Layer 0 - Input", "Layer 1 - Conv2D", "Layer 2 - MaxPooling2D"
+    
+    Card pe click karo toh expand hota hai aur us layer ke
+    parameters dikhte hain. Dense ke liye units aur activation
+    dikhega, Conv2D ke liye filters aur kernel_size dikhega.
+    Parameters change kar sakte ho without layer delete kiye.
+    
+    Right side mein har layer ke paas 3 buttons hain:
+    - Upar arrow = layer ko upar move karo
+    - Neeche arrow = layer ko neeche move karo
+    - Delete icon = layer delete karo
+    
+    Layer ordering change karne se network architecture change
+    hota hai - code generation aur validation pe asar padta hai.
+  
+  TAB 2: VISUALIZATION
+    Ye sabse cool tab hai. Network ka visual diagram dikhata hai.
+    
+    Kaise kaam karta hai:
+    1. Pehle build_network_config() call hota hai jo session_state
+       se layers ka data pack karta hai
+    2. Phir backend ko /api/model-summary API call jaati hai
+       - isse har layer ka output shape aur param count milta hai
+    3. Phir draw_network() function call hota hai (visualizer.py se)
+       - ye Matplotlib se poora diagram draw karta hai
+    4. st.pyplot() se diagram page pe render hota hai
+    
+    Diagram mein:
+    - Har layer ek column mein nodes (circles) hain
+    - Nodes ke beech lines hain jo connections dikhati hain
+    - Har layer ke neeche uska naam aur output shape likha hai
+    - Har layer ke upar param count likha hai
+    - Colors layer type ke hisaab se alag alag hain
+    
+    Right side mein Legend dikhta hai - color coding samjhne ke liye.
+    
+    Neeche total params, trainable params, aur non-trainable params.
+    Agar koi warning ho toh wo bhi yahan dikhti hai.
+  
+  TAB 3: CODE
+    Do buttons hain:
+    
+    "Generate Code" button:
+    - Backend ko /api/generate-code POST request jaati hai
+    - Poora network config JSON mein bhejta hai
+    - Backend TensorFlow/Keras ka clean Python code return karta hai
+    - Code syntax-highlighted dikhta hai st.code() mein
+    - Neeche "Download Code" button aata hai - .py file download hoti hai
+    
+    "Validate Architecture" button:
+    - Backend ko /api/validate POST request jaati hai
+    - Backend check karta hai koi shape mismatch toh nahi, koi missing
+      layer toh nahi, koi incompatible layer order toh nahi
+    - Agar sab theek hai toh green tick "Architecture is valid!" dikhta hai
+    - Agar error hai toh red error messages dikhte hain
+    - Agar warnings hain (galat nahi par risky) toh yellow warnings dikhte hain
+  
+  TAB 4: SUMMARY
+    - Backend ko /api/model-summary POST request jaati hai
+    - Response mein har layer ka naam, type, output shape, param count aata hai
+    - Pandas DataFrame banakar table mein dikhata hai
+    - Neeche 3 metric cards: Total Parameters, Trainable, Non-trainable
+    - Agar warnings hain toh wo bhi dikhte hain
+
+
+PART 7: HELPER FUNCTIONS
+
+  build_network_config():
+    Session state se saari information (layers list, compile config,
+    training config, model name) ko ek dictionary mein pack karta hai.
+    Ye dictionary JSON mein convert hoke API ko bheji jaati hai.
+    
+    Har layer ke config se relevant fields extract karta hai - units,
+    activation, filters, kernel_size, etc. Jo fields present hain wo
+    include karta hai, baaki chhod deta hai.
+  
+  call_api(endpoint, data, method):
+    Backend ko HTTP request bhejta hai. POST ya GET - jo chahiye.
+    Agar backend down ho toh orange error box dikhata hai
+    "Could not connect to backend." Agar koi aur error aaye
+    (server error, validation error, etc.) toh wo dikhata hai.
+    Timeout 10 seconds rakha hai - agar 10 second mein response
+    nahi aaya toh timeout error.
+
+
+------------------------------------------------------------
+FILE: frontend/visualizer.py (Network Diagram - 328 lines)
+------------------------------------------------------------
+
+Ye file Matplotlib use karke neural network ka visual diagram
+banati hai. Jaise textbook mein neural network ka diagram hota
+hai - circles connected with lines - waisa but colored aur
+professional.
+
+LAYER_COLORS dictionary:
+  Har layer type ka apna fixed color hai:
+  - Input = Light Blue (#4FC3F7)
+  - Dense = Purple (#7E57C2)
+  - Conv1D = Light Green (#66BB6A)
+  - Conv2D = Green (#43A047)
+  - Conv3D = Dark Green (#2E7D32)
+  - MaxPooling2D = Orange (#FB8C00)
+  - LSTM = Red (#E53935)
+  - GRU = Dark Red (#C62828)
+  - Bidirectional = Orange-Red (#FF7043)
+  - Dropout = Gray (#78909C)
+  - BatchNorm = Cyan (#26C6DA)
+  - Flatten = Brown (#8D6E63)
+  - Embedding = Pink (#EC407A)
+  
+  Total 27 layers ke 27 alag colors hain.
+
+_get_display_nodes(layer_type, config):
+  Decide karta hai diagram mein kitne circles (nodes) dikhane hain.
+  
+  Actual neurons toh bahut zyada hote hain (Dense(256) mein 256!).
+  256 circles draw karna possible nahi. Toh ye function max 8
+  circles dikhata hai. Agar actual count zyada hai toh beech mein
+  dots (...) dikhata hai "aur bhi hain" batane ke liye.
+  
+  Dense/LSTM/GRU: max 8 nodes (actual count config se milta hai)
+  Conv layers: max 6 nodes (filters se count milta hai)
+  Dropout/BatchNorm: 4 nodes (fixed, koi count nahi)
+  Flatten: 5 nodes (fixed)
+  Pooling: 4 nodes (fixed)
+
+_draw_nodes(ax, x, y_positions, color):
+  Specified positions pe colored circles draw karta hai.
+  Har circle ka white border hota hai (1.5 linewidth).
+  zorder=3 matlab ye connections ke upar dikhenge.
+
+_draw_connections(ax, x1, y1_positions, x2, y2_positions):
+  Do layers ke beech light gray lines draw karta hai.
+  Har node of layer 1 se har node of layer 2 tak line jaati hai.
+  Alpha (transparency) bahut low rakhi hai (0.08) taaki lines
+  bahut dark na dikhein - subtle connection effect deta hai.
+  Agar bahut zyada nodes hain toh alpha aur kam hota hai
+  taaki diagram cluttered na dikhe.
+
+draw_network(layers_data):
+  MAIN FUNCTION. Poora network diagram draw karta hai.
+  
+  Step by step:
+  1. Figure aur axis create karta hai dark background ke saath
+  2. Har layer ke liye ek vertical position decide karta hai
+     (left se right, layer_spacing = 2.5 units ke gap se)
+  3. Har layer ke liye:
+     a. Kitne nodes dikhane hain ye decide karta hai
+     b. Nodes ka y-position calculate karta hai (evenly spaced)
+     c. Agar actual count > display count toh beech mein dots lagata hai
+     d. Colored circles draw karta hai
+     e. Previous layer se connections (lines) draw karta hai
+     f. Neeche layer ka naam likhta hai (colored badge mein)
+     g. Aur neeche output shape likhta hai (gray text mein)
+     h. Upar param count likhta hai (1.2K params, 200.9K params, etc.)
+     i. Top node ke upar actual count likhta hai (256, 128, etc.)
+  4. Axis limits set karta hai, title lagata hai
+  5. Figure return karta hai (Streamlit st.pyplot() se render karega)
+  
+  Agar koi layer nahi hai toh gray text dikhata hai
+  "Add layers to visualize your network"
+
+draw_legend(layer_types_used):
+  Side mein ek chhota diagram banata hai jo color coding
+  samjhata hai. Sirf wahi layers dikhata hai jo current network
+  mein actually use ho rahe hain (sab 27 nahi).
+  
+  Layers ko categories mein group karta hai (Core, Convolutional,
+  Pooling, etc.) aur har category ka heading hota hai with
+  uske neeche colored rectangles + layer names.
+
+
+------------------------------------------------------------
+FILE: frontend/layers_ui.py (Layer Config Forms - 187 lines)
+------------------------------------------------------------
+
+Ye file har layer type ke liye alag configuration form
+render karti hai. Jab Architecture tab mein koi layer expand
+karo, toh jo input fields dikhte hain wo isi file se aate hain.
+
+LAYER_CATEGORIES dictionary:
+  Layers ko 6 categories mein organize kiya hai with emojis:
+  - Core: Input, Dense, Activation, Dropout, Flatten, Reshape
+  - Convolutional: Conv1D, Conv2D, Conv3D, SeparableConv2D,
+    DepthwiseConv2D, Conv2DTranspose
+  - Pooling: MaxPooling1D/2D/3D, AveragePooling1D/2D/3D,
+    GlobalAveragePooling1D/2D, GlobalMaxPooling1D/2D
+  - Recurrent: SimpleRNN, LSTM, GRU, Bidirectional
+  - Normalization: BatchNormalization, LayerNormalization
+  - Embedding: Embedding
+  
+  Ye dictionary sidebar ke Category dropdown mein use hoti hai.
+
+ACTIVATIONS list:
+  12 activation functions: None, relu, sigmoid, tanh, softmax,
+  leaky_relu, elu, selu, swish, gelu, softplus, linear
+
+render_layer_config(layer_type, idx):
+  MAIN FUNCTION. Layer type ke hisaab se sahi Streamlit widgets
+  dikhata hai aur config dictionary return karta hai.
+  
+  Har layer ke liye kya dikhta hai:
+  
+  Input: Ek text box "Input Shape" - comma separated dimensions
+    type karo, jaise "784" ya "28,28,1". String ko split karke
+    integer list mein convert karta hai.
+  
+  Dense: 4 widgets -
+    - Units (number input, default 64)
+    - Activation (dropdown, 12 options)
+    - Use Bias (checkbox, default True)
+    - Kernel Initializer (dropdown - glorot_uniform, he_normal, etc.)
+  
+  Activation: Sirf 1 dropdown - kaunsi activation function use karni hai.
+  
+  Dropout: Sirf 1 slider - rate (0.0 to 1.0, default 0.5).
+    Rate 0.3 = 30% neurons randomly off hote hain training mein.
+  
+  Flatten: Koi parameter nahi. Sirf caption dikhta hai
+    "Flattens input - no parameters to configure."
+  
+  Reshape: Ek text box - target shape type karo ("28,28,1").
+  
+  Conv1D/Conv2D/Conv3D/SeparableConv2D/Conv2DTranspose: 4 widgets -
+    - Filters (number input, default 32)
+    - Kernel Size (text input - Conv1D ke liye "3", Conv2D ke liye "3,3",
+      Conv3D ke liye "3,3,3")
+    - Padding (dropdown - "valid" ya "same")
+    - Activation (dropdown)
+  
+  DepthwiseConv2D: 3 widgets - Kernel Size, Padding, Activation.
+    Filters nahi hai kyunki depthwise mein filters = input channels.
+  
+  MaxPooling1D/AveragePooling1D: 1 widget - Pool Size (number, default 2)
+  MaxPooling2D/AveragePooling2D: 1 widget - Pool Size (text, "2,2")
+  MaxPooling3D/AveragePooling3D: 1 widget - Pool Size (text, "2,2,2")
+  GlobalPooling (1D/2D): Koi parameter nahi.
+  
+  SimpleRNN/LSTM/GRU: 4 widgets -
+    - Units (number input, default 64)
+    - Activation (dropdown, default tanh - RNN tradition)
+    - Return Sequences (checkbox - True = output every timestep,
+      False = output only last timestep)
+    - Recurrent Dropout (slider, 0.0 to 1.0)
+  
+  Bidirectional: 3 widgets -
+    - RNN Type (dropdown - LSTM/GRU/SimpleRNN - ye wrap karta hai)
+    - Units (number input)
+    - Return Sequences (checkbox)
+  
+  BatchNormalization/LayerNormalization: Koi parameter nahi.
+    Caption dikhta hai "using default parameters."
+  
+  Embedding: 2 widgets -
+    - Vocab Size / input_dim (number, default 10000)
+    - Embedding Dim / output_dim (number, default 128)
+  
+  IMPORTANT: Har widget ka unique key hota hai - "units_0", "units_1",
+  "act_0", "act_1" etc. idx (layer index) use karke unique banaya hai.
+  Agar same key ho do widgets ki toh Streamlit crash kar jaata hai.
+
+
+
+============================================================
+        BACKEND - JO PEECHE SE KAAM KARTA HAI
+============================================================
+
+Backend FastAPI se bana hai. FastAPI Python ka sabse fast web
+framework hai (Flask/Django se 3-5x faster). Ye sirf API
+provide karta hai - frontend se JSON request aati hai,
+backend process karke JSON response bhejta hai.
+
+Backend mein 4 files hain:
+
+
+------------------------------------------------------------
+FILE: backend/main.py (API Server - 144 lines)
+------------------------------------------------------------
+
+Ye file FastAPI app create karti hai aur saare API endpoints
+define karti hai.
+
+APP SETUP:
+  FastAPI(title="myNeuron API") se app banti hai.
+  Title Swagger docs mein dikhta hai when you visit /docs.
+  
+  CORS Middleware lagaya hai. CORS = Cross-Origin Resource Sharing.
+  Problem ye hai ki browser security policy ke according, agar
+  frontend localhost:8501 pe hai aur backend localhost:8000 pe hai
+  (ya frontend streamlit.app pe aur backend vercel.app pe), toh
+  browser request block kar deta hai by default. Ye security feature
+  hai - koi random website tumhara API call na kar sake.
+  
+  CORS middleware response mein special headers add karta hai jo
+  browser ko batate hain "ye origin allowed hai, request accept karo."
+  allow_origins=["*"] matlab sab origins allowed hain.
+  allow_methods=["*"] matlab GET, POST, PUT, DELETE sab allowed.
+  allow_headers=["*"] matlab sab headers allowed.
+
+LAYER CATALOG:
+  Ek hardcoded list hai with saare 27 supported layers. Har entry
+  mein 4 fields hain:
+  - layer_type: "Dense", "Conv2D", "LSTM", etc.
+  - category: "Core", "Convolutional", "Recurrent", etc.
+  - description: Layer kya karta hai (ek line mein)
+  - parameters: Kaunse parameters configure kar sakte ho (list)
+  
+  Example: LayerCatalogItem(layer_type="Dense", category="Core",
+  description="Fully connected layer",
+  parameters=["units", "activation", "use_bias", "kernel_initializer"])
+
+
+ENDPOINTS (5 total):
+
+  ENDPOINT 1: GET /health
+    Sabse simple endpoint. Sirf check karta hai ki server
+    alive hai ya nahi. Response:
+    {"status": "healthy", "service": "myNeuron API"}
+    
+    Ye monitoring ke liye useful hai. Deployment platforms
+    (Vercel, AWS, etc.) periodically health check karte hain.
+    Agar unhealthy response aaye toh alert trigger hota hai.
+  
+  
+  ENDPOINT 2: GET /api/layer-catalog
+    Saare available layers ki list return karta hai with
+    descriptions aur configurable parameters.
+    
+    Response: List of 27 LayerCatalogItem objects.
+    
+    Frontend isko use karke layer options populate kar sakta hai
+    (abhi frontend mein hardcoded hai, par future mein dynamic
+    bana sakte hain).
+  
+  
+  ENDPOINT 3: POST /api/generate-code
+    YE SABSE IMPORTANT ENDPOINT HAI.
+    
+    Request: NetworkConfig JSON - layers list + compile config
+    + training config + model name.
+    
+    Kya hota hai andar:
+    1. Pehle validate_network() call hota hai (validators.py se)
+    2. Agar validation fail ho (errors hain) toh code generate
+       nahi hota - errors return hote hain
+    3. Agar validation pass ho toh generate_code() call hota hai
+       (code_generator.py se)
+    4. Clean TensorFlow/Keras Python code string return hota hai
+    
+    Response: {"code": "import tensorflow...", "success": true, "errors": []}
+    
+    Agar exception aaye toh 500 status code with error detail.
+  
+  
+  ENDPOINT 4: POST /api/validate
+    Network architecture validate karta hai bina code generate kiye.
+    Ye quick check hai - code generate karne se pehle user ko
+    batata hai ki architecture mein koi problem toh nahi.
+    
+    Request: Same NetworkConfig JSON.
+    
+    Kya check karta hai:
+    - Network empty toh nahi?
+    - First layer Input hai ya nahi?
+    - Conv layer ke pehle 1D output toh nahi (Reshape chahiye)?
+    - Dense layer ke pehle multi-dim output toh nahi (Flatten chahiye)?
+    - RNN layer ko 2D+ input mil raha hai ya nahi?
+    
+    Response: {"valid": true/false, "errors": [...], "warnings": [...]}
+    
+    Errors = critical, architecture kaam nahi karegi.
+    Warnings = risky par chal sakta hai, user ko decide karne do.
+  
+  
+  ENDPOINT 5: POST /api/model-summary
+    Har layer ka output shape aur parameter count calculate karke
+    return karta hai. Ye wahi data hai jo Summary tab mein table
+    mein dikhta hai aur Visualization tab mein shapes dikhane ke
+    liye use hota hai.
+    
+    Request: Same NetworkConfig JSON.
+    
+    Response:
+    {
+      "layers": [
+        {"name": "input_0", "layer_type": "Input",
+         "output_shape": "(None, 784)", "param_count": 0},
+        {"name": "dense_1", "layer_type": "Dense",
+         "output_shape": "(None, 256)", "param_count": 200960},
+        ...
+      ],
+      "total_params": 235146,
+      "trainable_params": 234890,
+      "non_trainable_params": 256,
+      "warnings": []
+    }
+
+
+------------------------------------------------------------
+FILE: backend/models.py (Data Definitions - 219 lines)
+------------------------------------------------------------
+
+Ye file Pydantic models define karti hai. Pydantic ek library
+hai jo data validation automatically karti hai.
+
+Simple example: agar tumne model mein likha ki "units" integer
+hona chahiye, aur client "hello" bhej de, toh Pydantic turant
+422 error de dega with exact detail - "units must be integer,
+got string 'hello'". Manually if-else likhne ki zarurat nahi.
+
+ENUMS (fixed choices):
+
+  ActivationType - 12 values:
+    None, relu, sigmoid, tanh, softmax, leaky_relu, elu, selu,
+    swish, gelu, softplus, linear
+    
+    Ye kya hai: Activation function decide karta hai ki neuron
+    ki output value kaise transform ho. relu sabse popular hai
+    (negative values ko 0 kar deta hai, positive as-is).
+  
+  PaddingType - 2 values: valid, same
+    Conv layers mein padding. "valid" = no padding, output chhota
+    hota hai. "same" = padding lagta hai, output same size rehta hai.
+  
+  InitializerType - 10 values:
+    glorot_uniform, he_normal, etc.
+    Ye decide karta hai ki training start hone pe weights kaise
+    initialize kiye jaayein. Glorot uniform sabse common hai.
+  
+  OptimizerType - 7 values: adam, sgd, rmsprop, adagrad, adamax, nadam, adamw
+  LossType - 8 values: categorical_crossentropy, mse, mae, etc.
+  MetricType - 8 values: accuracy, Precision, Recall, AUC, etc.
+  
+  LayerType - 27 values:
+    Input, Dense, Activation, Dropout, Flatten, Reshape,
+    Conv1D, Conv2D, Conv3D, SeparableConv2D, DepthwiseConv2D, Conv2DTranspose,
+    MaxPooling1D/2D/3D, AveragePooling1D/2D/3D,
+    GlobalAveragePooling1D/2D, GlobalMaxPooling1D/2D,
+    SimpleRNN, LSTM, GRU, Bidirectional,
+    BatchNormalization, LayerNormalization,
+    Embedding
+
+MAIN MODELS:
+
+  LayerConfig:
+    Universal model jo KISI BHI layer ka config hold kar sakta hai.
+    Sab fields optional hain - sirf relevant wale fill hote hain.
+    
+    Fields: layer_type (required), name, input_shape, units, activation,
+    use_bias, kernel_initializer, filters, kernel_size, strides, padding,
+    pool_size, rate, target_shape, input_dim, output_dim,
+    return_sequences, recurrent_dropout, wrapped_layer_type
+    
+    Example: Dense ke liye sirf units aur activation fill hota hai,
+    baaki sab None rehta hai. Conv2D ke liye filters, kernel_size,
+    padding, activation fill hota hai.
+  
+  OptimizerConfig: optimizer_type + learning_rate + momentum + betas
+  CompileConfig: optimizer + loss + metrics
+  TrainingConfig: epochs + batch_size + validation_split + shuffle
+  
+  NetworkConfig: POORA NETWORK define karta hai.
+    - layers: List[LayerConfig] - saari layers ka list
+    - compile_config: CompileConfig
+    - training_config: TrainingConfig
+    - model_name: str
+    
+    Ye API ko bhejne ka main format hai. Frontend ye dictionary
+    banakar POST request mein JSON body ke roop mein bhejta hai.
+
+RESPONSE MODELS:
+  CodeGenerationResponse: {code, success, errors}
+  ValidationResponse: {valid, errors, warnings}
+  ModelSummaryResponse: {layers list, total_params, trainable, non_trainable, warnings}
+  LayerSummary: {name, layer_type, output_shape, param_count}
+  LayerCatalogItem: {layer_type, category, description, parameters}
+
+
+------------------------------------------------------------
+FILE: backend/code_generator.py (Code Generation - 303 lines)
+------------------------------------------------------------
+
+Ye file network config ko clean TensorFlow/Keras Python code
+mein convert karti hai. IMPORTANT: Koi actual TensorFlow import
+ya execution nahi hota - ye PURE STRING MANIPULATION hai. Isliye
+backend pe TensorFlow install hona zaroori nahi.
+
+generate_code(config):
+  MAIN FUNCTION. Poora Python script generate karta hai.
+  
+  Step 1: Import statements likhta hai
+    "import tensorflow as tf"
+    "from tensorflow import keras"
+    "from tensorflow.keras import layers, optimizers"
+  
+  Step 2: Model definition shuru karta hai
+    "# Model: MyModel"
+    "inputs = keras.Input(shape=(784,))"
+  
+  Step 3: Har layer ke liye _gen_layer_code() call karke
+    corresponding Keras function call likhta hai
+    "x = layers.Dense(256, activation='relu')(x)"
+    "x = layers.Dropout(0.3)(x)"
+    "x = layers.BatchNormalization()(x)"
+  
+  Step 4: Model create karta hai
+    "model = keras.Model(inputs=inputs, outputs=x, name='MyModel')"
+  
+  Step 5: Compile configuration likhta hai
+    "model.compile("
+    "    optimizer=optimizers.Adam(learning_rate=0.001),"
+    "    loss='sparse_categorical_crossentropy',"
+    "    metrics=['accuracy']"
+    ")"
+  
+  Step 6: Training code comment mein likhta hai
+    "# model.fit(X_train, y_train, epochs=10, batch_size=32,"
+    "#           validation_split=0.2, shuffle=True)"
+  
+  Step 7: model.summary() add karta hai
+    "model.summary()"
+  
+  Sab strings join karke ek clean, runnable Python file return hoti hai.
+
+_gen_layer_code(layer, idx):
+  Har layer type ke liye specific Keras code generate karta hai.
+  
+  Kuch examples:
+  - Input: keras.Input(shape=(784,))
+  - Dense: layers.Dense(256, activation='relu')
+  - Conv2D: layers.Conv2D(32, (3,3), padding='same', activation='relu')
+  - LSTM: layers.LSTM(128, return_sequences=True)
+  - Bidirectional: layers.Bidirectional(layers.LSTM(64))
+  - Dropout: layers.Dropout(0.3)
+  - Flatten: layers.Flatten()
+  - BatchNorm: layers.BatchNormalization()
+  - MaxPooling2D: layers.MaxPooling2D((2,2))
+  - Embedding: layers.Embedding(10000, 128)
+  
+  Har layer ke liye ek if-elif chain hai jo correct Keras syntax
+  mein string generate karta hai. Parameters config se uthata hai.
+
+_gen_optimizer_code(config):
+  adam: optimizers.Adam(learning_rate=0.001)
+  sgd: optimizers.SGD(learning_rate=0.01, momentum=0.9)
+  rmsprop: optimizers.RMSprop(learning_rate=0.001)
+  adamw: optimizers.AdamW(learning_rate=0.001, weight_decay=0.004)
+
+_gen_metrics_code(metrics):
+  Simple metrics (accuracy, mae, mse) string mein jaate hain.
+  Complex metrics (Precision, Recall, AUC, F1Score) Keras class
+  instantiation mein jaate hain: tf.keras.metrics.Precision()
+
+
+------------------------------------------------------------
+FILE: backend/validators.py (Validation Engine - 329 lines)
+------------------------------------------------------------
+
+Ye file 2 kaam karti hai:
+1. Architecture validate karna (galtiyan dhundhna)
+2. Shapes aur parameter counts calculate karna
+
+Ye bhi PURE PYTHON MATH hai. Koi TensorFlow nahi.
+
+compute_layer_info(layer, input_shape):
+  Har layer ke liye output shape aur parameter count calculate
+  karta hai. Ye formulas use karta hai:
+  
+  INPUT:
+    Output shape = jo shape user ne diya (e.g., (784,) ya (28,28,1))
+    Params = 0
+  
+  DENSE:
+    Agar input shape (784,) hai aur units 256 hai:
+    Params = input x units + bias = 784 x 256 + 256 = 200,960
+    Output shape = (256,)
+  
+  CONV2D:
+    Agar input (28,28,1) hai, filters 32, kernel 3x3, padding "same":
+    Params = kernel_h x kernel_w x in_channels x filters + bias
+           = 3 x 3 x 1 x 32 + 32 = 320
+    Output shape (same padding): (28, 28, 32) - size same rehta hai
+    Output shape (valid padding): ((28-3)/1 + 1, (28-3)/1 + 1, 32) = (26, 26, 32)
+  
+  CONV1D:
+    Similar to Conv2D but 1 dimension. kernel_size x in_channels x filters + bias
+  
+  LSTM:
+    Agar input (100, 50) hai aur units 64:
+    LSTM mein 4 gates hain (forget, input, candidate, output).
+    Har gate ka apna weight matrix hai.
+    Params = 4 x (input_features + hidden_units + 1) x hidden_units
+           = 4 x (50 + 64 + 1) x 64 = 29,440
+    Output shape (return_sequences=False): (64,)
+    Output shape (return_sequences=True): (100, 64)
+  
+  GRU:
+    3 gates hain (reset, update, candidate).
+    Params = 3 x (input_features + hidden_units + 1) x hidden_units
+  
+  BIDIRECTIONAL:
+    Forward + backward, toh params double.
+    Output shape: units x 2 (dono directions ka concatenate)
+  
+  MAXPOOLING2D:
+    Agar input (28,28,32) hai aur pool_size (2,2):
+    Output shape = (14, 14, 32) - height aur width half
+    Params = 0 (koi learnable weight nahi)
+  
+  FLATTEN:
+    Agar input (7, 7, 64) hai:
+    Output shape = (7 x 7 x 64,) = (3136,)
+    Params = 0
+  
+  DROPOUT:
+    Output shape = same as input (kuch change nahi hota shape mein)
+    Params = 0 (sirf randomly neurons off karta hai, koi weight nahi)
+  
+  BATCHNORMALIZATION:
+    Params = 4 x channels
+    Ye 4 hain: gamma (scale), beta (shift) - ye trainable hain
+    moving_mean, moving_variance - ye non-trainable hain
+  
+  EMBEDDING:
+    Agar input_dim=10000 aur output_dim=128:
+    Params = 10000 x 128 = 1,280,000
+    Har word ke liye ek 128-dimensional vector store hota hai.
+
+validate_network(config):
+  Architecture mein common mistakes dhundhta hai:
+  
+  CHECK 1: Koi layer hai bhi ya nahi?
+    Agar layers list empty hai -> error "Network has no layers."
+  
+  CHECK 2: First layer Input hai ya nahi?
+    Agar pehla layer Dense hai bina input_shape ke -> warning
+    "Consider adding an Input layer"
+  
+  CHECK 3: Conv after 1D output?
+    Agar koi Conv layer ke pehle ka output 1D hai (jaise Dense
+    ke baad Conv) -> error "Conv ko multi-dimensional input chahiye,
+    Reshape lagao pehle."
+    Kyunki Conv2D ko (height, width, channels) chahiye, but Dense
+    sirf (units,) output deta hai.
+  
+  CHECK 4: Dense after multi-dim without Flatten?
+    Agar Dense layer ke pehle ka output multi-dimensional hai
+    (jaise Conv2D ke output (7,7,64)) aur beech mein Flatten nahi
+    hai -> warning "Flatten ya GlobalPooling lagao Dense se pehle."
+    Technically Keras handle kar leta hai par ye usually galti hoti hai.
+  
+  CHECK 5: RNN needs 2D+ input?
+    LSTM/GRU ko (sequence_length, features) chahiye - 2D minimum.
+    Agar 1D input mil raha hai -> error.
+
+get_model_summary(config):
+  Saare layers pe iterate karta hai, ek ek ka shape aur params
+  compute karta hai using compute_layer_info(). BatchNorm ke liye
+  trainable/non-trainable alag count karta hai (gamma+beta trainable,
+  moving_mean+moving_var non-trainable). Validation bhi run karta hai
+  aur warnings include karta hai response mein.
+
+
+
+============================================================
+        EXTRA INFO
+============================================================
+
+DATA FLOW - REQUEST KAISE JAATI HAI:
+
+  1. User browser mein "Generate Code" click karta hai
+  2. app.py mein build_network_config() call hota hai
+     - session_state se layers, compile, training config pack hota hai
+  3. call_api("/api/generate-code", data) call hota hai
+     - requests.post() se HTTP POST request jaati hai
+  4. FastAPI (main.py) request receive karta hai
+     - Pydantic automatically JSON ko NetworkConfig mein convert karta hai
+     - Agar JSON format galat hai toh 422 error turant return
+  5. generate_network_code() endpoint function chalta hai
+     - Pehle validate_network() call (validators.py)
+     - Phir generate_code() call (code_generator.py)
+  6. Response JSON mein waapis aata hai
+     - {"code": "import tensorflow...", "success": true, "errors": []}
+  7. app.py response display karta hai
+     - st.code() se syntax highlighted code dikhata hai
+     - Download button appear hota hai
+
+
+VERCEL DEPLOYMENT:
+
+  api/index.py file Vercel ka entry point hai. Ye karta hai:
+  - sys.path mein backend folder add karta hai
+  - main.py se FastAPI app import karta hai
+  - Vercel isko serverless function ki tarah serve karta hai
+  
+  vercel.json routes define karta hai:
+  - /api/* requests -> api/index.py
+  - /health -> api/index.py
+  - /docs -> api/index.py
+  
+  Vercel automatically git push pe redeploy karta hai.
+
+
+STREAMLIT CLOUD DEPLOYMENT:
+
+  Streamlit Cloud GitHub se direct deploy karta hai.
+  Repo, branch, aur main file path point karo. Environment
+  variable MYNEURON_API_URL mein Vercel backend ka URL daalo.
+  
+  frontend/requirements.txt - sirf frontend deps (streamlit,
+  requests, matplotlib, numpy, pandas). Backend deps nahi chahiye.
+  
+  frontend/.streamlit/config.toml - dark theme configure kiya.
+
+
+WHY NO TENSORFLOW ON BACKEND:
+
+  Ye common confusion hai. Log sochte hain ki neural network
+  tool hai toh TensorFlow zaroor install hoga. Par nahi.
+  
+  Backend sirf CODE GENERATE karta hai - strings banata hai.
+  Backend sirf SHAPES CALCULATE karta hai - math karta hai.
+  Backend sirf VALIDATE karta hai - if-else checks.
+  
+  Koi actual model build nahi hota, koi training nahi hoti,
+  koi tensors nahi bante. Isliye backend lightweight hai
+  (sirf 3 dependencies: fastapi, uvicorn, pydantic) aur
+  Vercel serverless pe easily fit ho jaata hai.
+  
+  User generated code apne machine ya Google Colab pe run
+  karta hai jahan TensorFlow installed hai.

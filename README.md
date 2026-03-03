@@ -33,8 +33,8 @@
   </tr>
   <tr>
     <td width="50%">
-      <h3>💻 Code Generation</h3>
-      <p>Export clean, runnable TensorFlow/Keras code using either Sequential or Functional API. Includes compile and training configuration.</p>
+      <h3>💻 TensorFlow Code Generation</h3>
+      <p>Export clean, runnable TensorFlow/Keras code using the Functional API. Includes compile and training configuration — ready to run on your machine or Google Colab.</p>
     </td>
     <td width="50%">
       <h3>🛡️ Architecture Validation</h3>
@@ -57,13 +57,15 @@
 
 ## 🎬 Demo
 
+🔗 **[Try it live → myneuron-4nl2tm0jjtq35afpohsxova.streamlit.app](https://myneuron-4nl2tm0jjtq35afpohsxova.streamlit.app)**
+
 > **Design → Visualize → Export** in seconds.
 
 1. **Select a layer type** from the sidebar (Dense, Conv2D, LSTM, etc.)
 2. **Configure parameters** — units, activation, kernel size, dropout rate, etc.
-3. **View the architecture** as an interactive node diagram
-4. **Generate TensorFlow code** with one click
-5. **Validate** the architecture for compatibility issues
+3. **View the architecture** as a color-coded node diagram
+4. **Generate TensorFlow/Keras code** with one click
+5. **Validate** the architecture — get specific error messages for shape mismatches and missing layers
 
 ---
 
@@ -116,8 +118,8 @@ The app is deployed as two services — both **free**:
 
 | Service | Platform | URL |
 |---------|----------|-----|
-| **Backend API** | [Vercel](https://vercel.com) | `your-app.vercel.app/api/*` |
-| **Frontend UI** | [Streamlit Cloud](https://share.streamlit.io) | `your-app.streamlit.app` |
+| **Backend API** | [Vercel](https://vercel.com) | [`my-neuron.vercel.app`](https://my-neuron.vercel.app/health) |
+| **Frontend UI** | [Streamlit Cloud](https://share.streamlit.io) | [`myneuron.streamlit.app`](https://myneuron-4nl2tm0jjtq35afpohsxova.streamlit.app) |
 
 ### Deploy Backend to Vercel
 
@@ -248,7 +250,7 @@ curl -X POST http://localhost:8000/api/generate-code \
 |-------|-----------|
 | **Frontend** | [Streamlit](https://streamlit.io/) |
 | **Backend** | [FastAPI](https://fastapi.tiangolo.com/) |
-| **ML Framework** | [TensorFlow / Keras](https://www.tensorflow.org/) |
+| **Code Output** | TensorFlow / Keras (generated, not imported) |
 | **Visualization** | [Matplotlib](https://matplotlib.org/) |
 | **Validation** | [Pydantic](https://docs.pydantic.dev/) |
 | **Language** | Python 3.10+ |
@@ -284,7 +286,7 @@ Contributions are welcome! Here's how:
 
 ## 📄 License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is open source and available under the MIT License.
 
 ---
 
