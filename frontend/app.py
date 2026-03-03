@@ -6,6 +6,7 @@ Streamlit Frontend Application
 import streamlit as st
 import requests
 import json
+import os
 from layers_ui import render_layer_config, LAYER_CATEGORIES, ACTIVATIONS
 from visualizer import draw_network, draw_legend
 
@@ -124,7 +125,7 @@ st.markdown("""
 
 # ─── Backend URL ─────────────────────────────────────────────────────────────
 
-API_URL = "http://localhost:8000"
+API_URL = os.environ.get("MYNEURON_API_URL", "http://localhost:8000")
 
 
 # ─── Session State Init ─────────────────────────────────────────────────────

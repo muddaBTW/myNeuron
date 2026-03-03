@@ -110,10 +110,46 @@ Open [http://localhost:8501](http://localhost:8501) in your browser and start bu
 
 ---
 
+## ☁️ Deployment
+
+The app is deployed as two services — both **free**:
+
+| Service | Platform | URL |
+|---------|----------|-----|
+| **Backend API** | [Vercel](https://vercel.com) | `your-app.vercel.app/api/*` |
+| **Frontend UI** | [Streamlit Cloud](https://share.streamlit.io) | `your-app.streamlit.app` |
+
+### Deploy Backend to Vercel
+
+1. Install the [Vercel CLI](https://vercel.com/docs/cli): `npm i -g vercel`
+2. From the project root:
+   ```bash
+   vercel --prod
+   ```
+3. Note the deployed URL (e.g. `https://my-neuron.vercel.app`)
+
+### Deploy Frontend to Streamlit Cloud
+
+1. Go to [share.streamlit.io](https://share.streamlit.io) and sign in with GitHub
+2. Click **"New app"** and select:
+   - **Repository**: `muddaBTW/myNeuron`
+   - **Branch**: `main`
+   - **Main file path**: `frontend/app.py`
+3. Under **Advanced settings → Secrets**, add:
+   ```toml
+   MYNEURON_API_URL = "https://your-vercel-app-url.vercel.app"
+   ```
+4. Click **Deploy**
+
+---
+
 ## 🏗️ Architecture
 
 ```
 myNeuron/
+├── api/                        # Vercel Serverless
+│   └── index.py                # Entry point (imports FastAPI app)
+│
 ├── backend/                    # FastAPI REST API
 │   ├── main.py                 # API endpoints & layer catalog
 │   ├── models.py               # Pydantic data models & schemas
@@ -123,10 +159,13 @@ myNeuron/
 ├── frontend/                   # Streamlit Web UI
 │   ├── app.py                  # Main application (layout, state, tabs)
 │   ├── visualizer.py           # Network diagram renderer (Matplotlib)
-│   └── layers_ui.py            # Layer configuration UI components
+│   ├── layers_ui.py            # Layer configuration UI components
+│   ├── requirements.txt        # Frontend-only dependencies
+│   └── .streamlit/config.toml  # Theme & server config
 │
+├── vercel.json                 # Vercel routing & build config
 ├── test_api.py                 # API integration tests
-├── requirements.txt            # Python dependencies
+├── requirements.txt            # Backend dependencies (Vercel uses this)
 ├── .gitignore
 └── README.md
 ```
