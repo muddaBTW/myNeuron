@@ -62,8 +62,9 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
             params = ks * in_channels * filters
             if layer.use_bias:
                 params += filters
-            stride = layer.strides if isinstance(layer.strides, int) else (layer.strides[0] if layer.strides else 1)
-            seq_len = _compute_conv_output(input_shape[0], ks, stride, layer.padding.value)
+            stride = layer.strides if isinstance(layer.strides, int) else (layer.strides[0] if (layer.strides and len(layer.strides) > 0) else 1)
+            padding_val = layer.padding.value if hasattr(layer.padding, 'value') else (layer.padding or "valid")
+            seq_len = _compute_conv_output(input_shape[0], ks, stride, padding_val)
             output_shape = (seq_len, filters)
         else:
             output_shape = ("?", filters)
@@ -87,8 +88,10 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
             strides = layer.strides or [1, 1]
             if isinstance(strides, int):
                 strides = [strides, strides]
-            h = _compute_conv_output(input_shape[0], ks[0], strides[0], layer.padding.value)
-            w = _compute_conv_output(input_shape[1], ks[1], strides[1], layer.padding.value)
+            
+            padding_val = layer.padding.value if hasattr(layer.padding, 'value') else (layer.padding or "valid")
+            h = _compute_conv_output(input_shape[0], ks[0], strides[0], padding_val)
+            w = _compute_conv_output(input_shape[1], ks[1], strides[1], padding_val)
             output_shape = (h, w, filters)
         else:
             output_shape = ("?", "?", filters)
@@ -119,8 +122,10 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
             strides = layer.strides or [1, 1]
             if isinstance(strides, int):
                 strides = [strides, strides]
-            h = _compute_conv_output(input_shape[0], ks[0], strides[0], layer.padding.value)
-            w = _compute_conv_output(input_shape[1], ks[1], strides[1], layer.padding.value)
+            
+            padding_val = layer.padding.value if hasattr(layer.padding, 'value') else (layer.padding or "valid")
+            h = _compute_conv_output(input_shape[0], ks[0], strides[0], padding_val)
+            w = _compute_conv_output(input_shape[1], ks[1], strides[1], padding_val)
             output_shape = (h, w, in_channels)
         else:
             output_shape = ("?", "?", "?")

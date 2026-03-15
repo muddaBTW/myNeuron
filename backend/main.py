@@ -135,6 +135,9 @@ async def get_model_summary_endpoint(config: NetworkConfig):
             warnings=summary["warnings"]
         )
     except Exception as e:
+        import traceback
+        error_details = f"{str(e)}\n{traceback.format_exc()}"
+        print(f"ERROR in /api/model-summary: {error_details}")
         raise HTTPException(status_code=500, detail=f"Summary computation failed: {str(e)}")
 
 
