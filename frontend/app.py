@@ -392,7 +392,7 @@ with tab_arch:
 
             with col_main:
                 with st.expander(f"**Layer {i}** — {layer['layer_type']}", expanded=False):
-                    new_config = render_layer_config(layer["layer_type"], i)
+                    new_config = render_layer_config(layer["layer_type"], i, layer.get("config"))
                     st.session_state.layers[i]["config"] = new_config
 
             with col_actions:
