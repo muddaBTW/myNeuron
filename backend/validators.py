@@ -9,6 +9,8 @@ from models import LayerConfig, LayerType, NetworkConfig
 
 def _compute_conv_output(input_size, kernel_size, strides, padding):
     """Compute output size for a conv/pool operation."""
+    if not isinstance(input_size, int):
+        return "?"
     if padding == "same":
         return (input_size + strides - 1) // strides
     return (input_size - kernel_size) // strides + 1
@@ -29,9 +31,12 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
         units = layer.units or 64
         if input_shape:
             in_features = input_shape[-1]
-            params = in_features * units
-            if layer.use_bias:
-                params += units
+            if isinstance(in_features, int):
+                params = in_features * units
+                if layer.use_bias:
+                    params += units
+            else:
+                params = 0
             output_shape = input_shape[:-1] + (units,)
         else:
             output_shape = (units,)
@@ -59,9 +64,12 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
         ks = layer.kernel_size if isinstance(layer.kernel_size, int) else (layer.kernel_size[0] if layer.kernel_size else 3)
         if input_shape and len(input_shape) >= 2:
             in_channels = input_shape[-1]
-            params = ks * in_channels * filters
-            if layer.use_bias:
-                params += filters
+            if isinstance(in_channels, int):
+                params = ks * in_channels * filters
+                if layer.use_bias:
+                    params += filters
+            else:
+                params = 0
             stride = layer.strides if isinstance(layer.strides, int) else (layer.strides[0] if (layer.strides and len(layer.strides) > 0) else 1)
             padding_val = layer.padding.value if hasattr(layer.padding, 'value') else (layer.padding or "valid")
             seq_len = _compute_conv_output(input_shape[0], ks, stride, padding_val)
@@ -76,15 +84,18 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
             ks = [ks, ks]
         if input_shape and len(input_shape) >= 3:
             in_channels = input_shape[-1]
-            if lt == LayerType.SEPARABLE_CONV2D:
-                params = ks[0] * ks[1] * in_channels + in_channels * filters
-            elif lt == LayerType.DEPTHWISE_CONV2D:
-                params = ks[0] * ks[1] * in_channels
-                filters = in_channels
+            if isinstance(in_channels, int):
+                if lt == LayerType.SEPARABLE_CONV2D:
+                    params = ks[0] * ks[1] * in_channels + in_channels * filters
+                elif lt == LayerType.DEPTHWISE_CONV2D:
+                    params = ks[0] * ks[1] * in_channels
+                    filters = in_channels
+                else:
+                    params = ks[0] * ks[1] * in_channels * filters
+                if layer.use_bias:
+                    params += filters
             else:
-                params = ks[0] * ks[1] * in_channels * filters
-            if layer.use_bias:
-                params += filters
+                params = 0
             strides = layer.strides or [1, 1]
             if isinstance(strides, int):
                 strides = [strides, strides]
@@ -135,7 +146,10 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
         if isinstance(ps, list):
             ps = ps[0]
         if input_shape and len(input_shape) >= 2:
-            seq_len = input_shape[0] // ps
+            if isinstance(input_shape[0], int):
+                seq_len = input_shape[0] // ps
+            else:
+                seq_len = "?"
             output_shape = (seq_len,) + input_shape[1:]
         params = 0
 
@@ -144,8 +158,8 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
         if isinstance(ps, int):
             ps = [ps, ps]
         if input_shape and len(input_shape) >= 3:
-            h = input_shape[0] // ps[0]
-            w = input_shape[1] // ps[1]
+            h = input_shape[0] // ps[0] if isinstance(input_shape[0], int) else "?"
+            w = input_shape[1] // ps[1] if isinstance(input_shape[1], int) else "?"
             output_shape = (h, w, input_shape[-1])
         params = 0
 
@@ -168,12 +182,15 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
         units = layer.units or 64
         if input_shape and len(input_shape) >= 2:
             in_features = input_shape[-1]
-            if lt == LayerType.SIMPLE_RNN:
-                params = (in_features + units + 1) * units
-            elif lt == LayerType.LSTM:
-                params = 4 * ((in_features + units + 1) * units)
-            elif lt == LayerType.GRU:
-                params = 3 * ((in_features + units + 1) * units)
+            if isinstance(in_features, int):
+                if lt == LayerType.SIMPLE_RNN:
+                    params = (in_features + units + 1) * units
+                elif lt == LayerType.LSTM:
+                    params = 4 * ((in_features + units + 1) * units)
+                elif lt == LayerType.GRU:
+                    params = 3 * ((in_features + units + 1) * units)
+            else:
+                params = 0
             if layer.return_sequences:
                 output_shape = (input_shape[0], units)
             else:
@@ -186,13 +203,16 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
         wrapped = layer.wrapped_layer_type or "LSTM"
         if input_shape and len(input_shape) >= 2:
             in_features = input_shape[-1]
-            if wrapped == "LSTM":
-                single_params = 4 * ((in_features + units + 1) * units)
-            elif wrapped == "GRU":
-                single_params = 3 * ((in_features + units + 1) * units)
+            if isinstance(in_features, int):
+                if wrapped == "LSTM":
+                    single_params = 4 * ((in_features + units + 1) * units)
+                elif wrapped == "GRU":
+                    single_params = 3 * ((in_features + units + 1) * units)
+                else:
+                    single_params = (in_features + units + 1) * units
+                params = single_params * 2  # forward + backward
             else:
-                single_params = (in_features + units + 1) * units
-            params = single_params * 2  # forward + backward
+                params = 0
             if layer.return_sequences:
                 output_shape = (input_shape[0], units * 2)
             else:
@@ -202,11 +222,15 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
 
     elif lt == LayerType.BATCH_NORM:
         if input_shape:
-            params = 4 * input_shape[-1]  # gamma, beta, moving_mean, moving_var
+            in_features = input_shape[-1]
+            params = 4 * in_features if isinstance(in_features, int) else 0
+            output_shape = input_shape
 
     elif lt == LayerType.LAYER_NORM:
         if input_shape:
-            params = 2 * input_shape[-1]  # gamma, beta
+            in_features = input_shape[-1]
+            params = 2 * in_features if isinstance(in_features, int) else 0
+            output_shape = input_shape
 
     elif lt == LayerType.EMBEDDING:
         input_dim = layer.input_dim or 10000
