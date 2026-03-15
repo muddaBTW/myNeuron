@@ -51,12 +51,20 @@ def compute_layer_info(layer: LayerConfig, input_shape: Optional[Tuple]) -> dict
         if input_shape:
             flat_size = 1
             for d in input_shape:
-                flat_size *= d
+                if isinstance(d, int):
+                    flat_size *= d
+                else:
+                    flat_size = "?"
+                    break
             output_shape = (flat_size,)
         params = 0
 
     elif lt == LayerType.RESHAPE:
-        output_shape = tuple(layer.target_shape) if layer.target_shape else input_shape
+        # Convert list to tuple, ensuring elements are either int or "?"
+        if layer.target_shape:
+            output_shape = tuple(d if (isinstance(d, int) or d == "?") else "?" for d in layer.target_shape)
+        else:
+            output_shape = input_shape
         params = 0
 
     elif lt in (LayerType.CONV1D,):
